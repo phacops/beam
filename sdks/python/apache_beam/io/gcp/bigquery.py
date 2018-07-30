@@ -116,6 +116,7 @@ import collections
 import datetime
 import json
 import logging
+import pickle
 import re
 import time
 import uuid
@@ -179,6 +180,14 @@ class RowAsDictJsonCoder(coders.Coder):
 
   def decode(self, encoded_table_row):
     return json.loads(encoded_table_row)
+
+
+class RowAsDictPickleCoder(coders.Coder):
+  def encode(self, table_row):
+    return pickle.dumps(table_row)
+
+  def decode(self, encoded_table_row):
+    return pickle.loads(encoded_table_row)
 
 
 class TableRowJsonCoder(coders.Coder):
@@ -417,7 +426,7 @@ class BigQuerySource(dataflow_io.NativeSource):
 
     self.validate = validate
     self.flatten_results = flatten_results
-    self.coder = coder or RowAsDictJsonCoder()
+    self.coder = coder or RowAsDictPickleCoder()
 
   def display_data(self):
     if self.query is not None:
@@ -553,7 +562,7 @@ bigquery_v2_messages.TableSchema` object.
     self.write_disposition = BigQueryDisposition.validate_write(
         write_disposition)
     self.validate = validate
-    self.coder = coder or RowAsDictJsonCoder()
+    self.coder = coder or RowAsDictPickleCoder()
 
   def display_data(self):
     res = {}
@@ -623,7 +632,7 @@ class BigQueryReader(dataflow_io.NativeSourceReader):
       raise RuntimeError(
           'Missing executing project information. Please use the --project '
           'command line option to specify it.')
-    self.row_as_dict = isinstance(self.source.coder, RowAsDictJsonCoder)
+    self.row_as_dict = isinstance(self.source.coder, RowAsDictPickleCoder)
     # Schema for the rows being read by the reader. It is initialized the
     # first time something gets read from the table. It is not required
     # for reading the field values in each row but could be useful for
@@ -691,7 +700,7 @@ class BigQueryWriter(dataflow_io.NativeSinkWriter):
   def __init__(self, sink, test_bigquery_client=None, buffer_size=None):
     self.sink = sink
     self.test_bigquery_client = test_bigquery_client
-    self.row_as_dict = isinstance(self.sink.coder, RowAsDictJsonCoder)
+    self.row_as_dict = isinstance(self.sink.coder, RowAsDictPickleCoder)
     # Buffer used to batch written rows so we reduce communication with the
     # BigQuery service.
     self.rows_buffer = []
